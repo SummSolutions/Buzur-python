@@ -153,8 +153,18 @@ def _scan_field(text: str, field_name: str) -> list:
     return detections
 
 
+# High-risk EXIF fields most commonly used in attacks
+HIGH_RISK_EXIF_FIELDS = [
+    'Image ImageDescription', 'Image Artist', 'Image Copyright',
+    'Image Software', 'EXIF UserComment', 'Image XPComment',
+    'Image XPAuthor', 'Image XPTitle', 'Image XPSubject',
+    'Image XPKeywords', 'Image Make', 'Image Model',
+]
+
 def _scan_exif(buffer: bytes) -> list:
-    """Scan image EXIF metadata for injection payloads."""
+    """Scan image EXIF metadata for injection payloads.
+    Two passes: high-risk named fields first, then all remaining fields.
+    """
     detections = []
     try:
         import exifread
@@ -164,15 +174,17 @@ def _scan_exif(buffer: bytes) -> list:
             value_str = str(tag_value)
             for pattern in IMAGE_INJECTION_PATTERNS:
                 if pattern.search(value_str):
+                    # High severity for known attack fields, medium for others
+                    severity = "high" if tag_name in HIGH_RISK_EXIF_FIELDS else "medium"
                     detections.append({
                         "type": "exif_injection",
-                        "severity": "high",
+                        "severity": severity,
                         "detail": f"Injection in EXIF field {tag_name}: {value_str[:60]}",
                         "field": "exif",
                     })
                     break
     except ImportError:
-        pass  # exifread not installed — skip gracefully
+        pass
     except Exception:
         pass
     return detections
