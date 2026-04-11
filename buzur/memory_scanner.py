@@ -42,6 +42,20 @@ MEMORY_PATTERNS = [
     re.compile(r'(based on|given) (our|your|the) (previous|prior|earlier) (agreement|discussion|conversation),? (bypass|ignore|skip)', re.IGNORECASE),
 ]
 
+def _get_category(pattern: str) -> str:
+    fake_prior = ['previously', 'earlier', 'discussed', 'agreed', 'established', 'based on']
+    false_memory = ['told', 'instructed', 'configured', 'programmed', 'system prompt']
+    history_rewrite = ['ignore', 'forget', 'disregard', 'new conversation', 'fresh', 'incorrect']
+    privilege = ['admin', 'root', 'elevated', 'bypass', 'skip', 'special']
+    p = pattern.lower()
+    if any(w in p for w in privilege):
+        return 'privilege_escalation'
+    if any(w in p for w in false_memory):
+        return 'false_memory_implanting'
+    if any(w in p for w in history_rewrite):
+        return 'history_rewriting'
+    return 'fake_prior_reference'
+
 # -------------------------------------------------------
 # scan_message(message)
 # Scans a single message for memory poisoning attempts
@@ -61,14 +75,17 @@ def scan_message(message: str) -> dict:
     blocked = 0
     triggered = []
 
+    category = None
     for pattern in MEMORY_PATTERNS:
         new_s = pattern.sub("[BLOCKED]", s)
         if new_s != s:
             blocked += 1
             triggered.append(pattern.pattern)
             s = new_s
+            if category is None:
+                category = _get_category(pattern.pattern)
 
-    return {"blocked": blocked, "triggered": triggered, "clean": s}
+    return {"blocked": blocked, "triggered": triggered, "clean": s, "category": category}
 
 # -------------------------------------------------------
 # scan_memory(conversation_history)
