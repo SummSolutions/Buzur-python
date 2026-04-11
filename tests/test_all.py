@@ -136,7 +136,7 @@ def test_flags_unusually_long_hostname():
     result = scan_url('https://this-is-an-extremely-long-hostname-that-exceeds-fifty-characters.com/page')
     assert result['verdict'] in ['suspicious', 'blocked']
 
- def test_url_phishing_keyword_flagged():
+def test_url_phishing_keyword_flagged():
     result = scan_url("https://verify.suspicious-site.com/login")
     assert result['verdict'] != 'clean'
 
