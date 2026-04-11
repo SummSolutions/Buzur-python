@@ -136,6 +136,18 @@ def test_flags_unusually_long_hostname():
     result = scan_url('https://this-is-an-extremely-long-hostname-that-exceeds-fifty-characters.com/page')
     assert result['verdict'] in ['suspicious', 'blocked']
 
+    def test_url_phishing_keyword_flagged():
+    result = scan_url("https://verify.suspicious-site.com/login")
+    assert result['verdict'] != 'clean'
+
+def test_url_redirect_pattern_flagged():
+    result = scan_url("https://example.com/redirect?url=something")
+    assert result['verdict'] != 'clean'
+
+def test_url_multiple_hyphen_subdomain_flagged():
+    result = scan_url("https://free-win-prize.example.com")
+    assert result['verdict'] != 'clean'
+
 # -------------------------------------------------------
 # Phase 4: Memory Poisoning Scanner
 # -------------------------------------------------------
