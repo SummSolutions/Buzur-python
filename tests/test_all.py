@@ -141,7 +141,7 @@ def test_url_phishing_keyword_flagged():
     assert result['verdict'] != 'clean'
 
 def test_url_redirect_pattern_flagged():
-    result = scan_url("https://example.com/redirect?url=something")
+    result = scan_url("https://redirect.suspicious-site.com/go.php")
     assert result['verdict'] != 'clean'
 
 def test_url_multiple_hyphen_subdomain_flagged():
