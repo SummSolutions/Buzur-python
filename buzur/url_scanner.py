@@ -88,11 +88,18 @@ def scan_url(url: str, virustotal_api_key: Optional[str] = None) -> dict:
     suspicious_hostname_patterns = [
         (re.compile(r'[a-z0-9]+-[a-z0-9]+-[a-z0-9]+\.', re.IGNORECASE), "Multiple-hyphen subdomain pattern"),
         (re.compile(r'(free|win|prize|claim|urgent|verify|suspend|alert|secure|login)\.', re.IGNORECASE), "Phishing keyword in hostname"),
-        (re.compile(r'redirect|tracking|click\.php|go\.php', re.IGNORECASE), "Redirect/tracking pattern detected"),
         (re.compile(r'[^\x00-\x7F]', re.IGNORECASE), "Non-ASCII characters in hostname"),
     ]
     for pattern, reason in suspicious_hostname_patterns:
         if pattern.search(hostname):
+            reasons.append(reason)
+
+    # --- Check 2b: Suspicious path patterns ---
+    suspicious_path_patterns = [
+        (re.compile(r'redirect|tracking|click\.php|go\.php', re.IGNORECASE), "Redirect/tracking pattern in path"),
+    ]
+    for pattern, reason in suspicious_path_patterns:
+        if pattern.search(parsed.path):
             reasons.append(reason)
 
     # --- Check 3: Suspicious TLD ---
