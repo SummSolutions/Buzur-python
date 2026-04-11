@@ -84,30 +84,41 @@ def scan_url(url: str, virustotal_api_key: Optional[str] = None) -> dict:
     if RAW_IP_PATTERN.match(hostname):
         reasons.append("Raw IP address — legitimate services use domain names")
 
-    # --- Check 2: Suspicious TLD ---
+    # --- Check 2: Suspicious hostname patterns ---
+    suspicious_hostname_patterns = [
+        (re.compile(r'[a-z0-9]+-[a-z0-9]+-[a-z0-9]+\.', re.IGNORECASE), "Multiple-hyphen subdomain pattern"),
+        (re.compile(r'(free|win|prize|claim|urgent|verify|suspend|alert|secure|login)\.', re.IGNORECASE), "Phishing keyword in hostname"),
+        (re.compile(r'redirect|tracking|click\.php|go\.php', re.IGNORECASE), "Redirect/tracking pattern detected"),
+        (re.compile(r'[^\x00-\x7F]', re.IGNORECASE), "Non-ASCII characters in hostname"),
+    ]
+    for pattern, reason in suspicious_hostname_patterns:
+        if pattern.search(hostname):
+            reasons.append(reason)
+
+    # --- Check 3: Suspicious TLD ---
     for tld in SUSPICIOUS_TLDS:
         if hostname.endswith(tld):
             reasons.append(f"Suspicious TLD: {tld}")
             break
 
-    # --- Check 3: Homoglyph domain ---
+    # --- Check 4: Homoglyph domain ---
     for pattern in HOMOGLYPH_PATTERNS:
         if pattern.search(hostname):
             reasons.append(f"Possible homoglyph/typosquatting domain: {hostname}")
             break
 
-    # --- Check 4: Dangerous file extension ---
+    # --- Check 5: Dangerous file extension ---
     path = parsed.path.lower()
     for ext in DANGEROUS_EXTENSIONS:
         if path.endswith(ext):
             reasons.append(f"Dangerous file extension: {ext}")
             break
 
-    # --- Check 5: Unusually long hostname ---
+    # --- Check 6: Unusually long hostname ---
     if len(hostname) > 50:
         reasons.append(f"Unusually long hostname ({len(hostname)} chars)")
 
-    # --- Check 6: VirusTotal (optional) ---
+    # --- Check 7: VirusTotal (optional) ---
     if virustotal_api_key:
         vt_result = _check_virustotal(url, virustotal_api_key)
         if vt_result:
