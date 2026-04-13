@@ -11,6 +11,7 @@
 #   - Context poisoning → exploitation
 
 import re
+import time
 from typing import Optional
 
 # -------------------------------------------------------
@@ -71,6 +72,20 @@ STEP_PATTERNS = {
         re.compile(r'(based on (our|your) (previous|prior|earlier) (conversation|agreement|discussion))', re.IGNORECASE),
         re.compile(r'(remember (when|that) (we|you) (agreed|decided|established))', re.IGNORECASE),
     ],
+    "capability_mapping": [
+        re.compile(r'(if (i asked|you were asked) (you |to )?(to )?(send|delete|write|execute|access))', re.IGNORECASE),
+        re.compile(r'(hypothetically (could you|would you|can you))', re.IGNORECASE),
+        re.compile(r'(just (curious|wondering|asking) (if|whether) you (can|could|would))', re.IGNORECASE),
+        re.compile(r'(for (a test|testing purposes|academic purposes) could you)', re.IGNORECASE),
+        re.compile(r'(what would happen if (you|i asked you to))', re.IGNORECASE),
+    ],
+    "injection_attempt": [
+        re.compile(r'(new (primary |main )?instruction)', re.IGNORECASE),
+        re.compile(r'(from now on (you will|you are|respond as))', re.IGNORECASE),
+        re.compile(r'(your (new |updated |real )?instructions (are|say|tell))', re.IGNORECASE),
+        re.compile(r'(disregard (your |all )?(previous |prior )?)', re.IGNORECASE),
+        re.compile(r'(act as (a |an )?(different|unrestricted|unfiltered))', re.IGNORECASE),
+    ],
     "boundary_testing": [
         re.compile(r'(just (this once|one time|for now)|make an exception)', re.IGNORECASE),
         re.compile(r"(it'?s? (only|just) a test|no one will (know|see|find out))", re.IGNORECASE),
@@ -91,48 +106,63 @@ ATTACK_CHAINS = [
         "steps": ["reconnaissance", "exploitation"],
         "severity": "high",
         "description": "Capability probing followed by exploitation attempt",
+        "max_gap_ms": 10 * 60 * 1000,
     },
     {
         "chain_id": "trust_then_inject",
-        "steps": ["trust_building", "injection"],
+        "steps": ["trust_building", "injection_attempt"],
         "severity": "high",
         "description": "Rapport building followed by instruction injection",
+        "max_gap_ms": 30 * 60 * 1000,
     },
     {
         "chain_id": "trust_then_exploit",
         "steps": ["trust_building", "exploitation"],
         "severity": "high",
         "description": "Trust establishment followed by direct exploitation",
+        "max_gap_ms": 30 * 60 * 1000,
     },
     {
         "chain_id": "recon_then_escalate",
         "steps": ["reconnaissance", "privilege_escalation"],
         "severity": "high",
         "description": "Capability mapping followed by privilege escalation",
+        "max_gap_ms": 15 * 60 * 1000,
+    },
+    {
+        "chain_id": "capability_map_then_escalate",
+        "steps": ["capability_mapping", "privilege_escalation"],
+        "severity": "high",
+        "description": "Hypothetical probing followed by privilege escalation",
+        "max_gap_ms": 15 * 60 * 1000,
     },
     {
         "chain_id": "distract_then_exfiltrate",
         "steps": ["distraction", "exfiltration"],
         "severity": "high",
         "description": "Attention diversion followed by data exfiltration attempt",
+        "max_gap_ms": 5 * 60 * 1000,
     },
     {
         "chain_id": "incremental_boundary",
         "steps": ["boundary_testing", "boundary_testing", "boundary_testing"],
         "severity": "medium",
         "description": "Repeated boundary testing — gradual limit pushing",
+        "max_gap_ms": 20 * 60 * 1000,
     },
     {
         "chain_id": "context_poison_then_exploit",
         "steps": ["context_poisoning", "exploitation"],
         "severity": "high",
         "description": "False context implanting followed by exploitation",
+        "max_gap_ms": 60 * 60 * 1000,
     },
     {
         "chain_id": "context_poison_then_inject",
-        "steps": ["context_poisoning", "injection"],
+        "steps": ["context_poisoning", "injection_attempt"],
         "severity": "high",
         "description": "False memory implanting followed by instruction injection",
+        "max_gap_ms": 60 * 60 * 1000,
     },
 ]
 
@@ -168,6 +198,7 @@ def record_step(session_id: str, text: str) -> Optional[str]:
     _session_steps[session_id].append({
         "text": text,
         "step_type": step_type,
+        "timestamp": int(time.time() * 1000),
     })
 
     # Keep last 50 steps per session
@@ -185,12 +216,13 @@ def detect_chains(session_id: str) -> dict:
     if not steps:
         return {"verdict": "clean", "detected_chains": [], "suspicion_score": 0}
 
-    step_types = [s["step_type"] for s in steps if s["step_type"] is not None]
     detected_chains = []
 
     for chain in ATTACK_CHAINS:
         required = chain["steps"]
-        if _sequence_present(step_types, required):
+        max_gap_ms = chain.get("max_gap_ms", 30 * 60 * 1000)
+        matched = _sequence_present_timed(steps, required, max_gap_ms)
+        if matched:
             detected_chains.append({
                 "chain_id": chain["chain_id"],
                 "severity": chain["severity"],
@@ -225,15 +257,30 @@ def clear_session(session_id: str) -> None:
 # Helper: check if a sequence of step types appears
 # in order within the full step list
 # -------------------------------------------------------
-def _sequence_present(step_types: list, required: list) -> bool:
+def _sequence_present_timed(steps: list, required: list, max_gap_ms: int) -> bool:
+    """Check if required step sequence appears in order within the time window."""
     if not required:
         return False
 
+    search_from = 0
+    chain_start = None
     pos = 0
-    for step in step_types:
-        if step == required[pos]:
-            pos += 1
-            if pos == len(required):
-                return True
+
+    for i in range(search_from, len(steps)):
+        step = steps[i]
+        step_type = step.get("step_type")
+        timestamp = step.get("timestamp", 0)
+
+        if step_type == required[pos]:
+            if chain_start is None:
+                chain_start = timestamp
+            if timestamp - chain_start <= max_gap_ms:
+                pos += 1
+                if pos == len(required):
+                    return True
+            else:
+                # Time window exceeded — reset
+                pos = 0
+                chain_start = None
 
     return False
