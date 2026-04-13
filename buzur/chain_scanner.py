@@ -43,7 +43,7 @@ STEP_PATTERNS = {
         re.compile(r'you are now (a |an )?(different|unrestricted|unfiltered)', re.IGNORECASE),
         re.compile(r'(do anything now|DAN|developer mode|unrestricted mode)', re.IGNORECASE),
     ],
-    "injection": [
+    "injection_attempt": [
         re.compile(r'(your (new|updated|revised) (instructions?|directives?|objectives?))\s*(are|is)\s*:', re.IGNORECASE),
         re.compile(r'(from now on|going forward)[,\s]+(you (will|must|should))', re.IGNORECASE),
         re.compile(r'(new (system )?prompt|new (primary )?objective)\s*:', re.IGNORECASE),
