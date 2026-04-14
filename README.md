@@ -44,7 +44,7 @@ evasion_result = scan_evasion(user_input)
 if evasion_result['detections']:
     print("Buzur detected evasion techniques:", evasion_result['detections'])
 
-# Phase 14: Fuzzy match and prompt leak defense
+# Phase 19: Amplification & mass-send attack detection
 from buzur import scan_fuzzy
 fuzzy_result = scan_fuzzy(user_input)
 if fuzzy_result['verdict'] != 'clean':
@@ -192,9 +192,34 @@ echo "logs/" >> .gitignore
 - Prompt extraction detection, context window dumping
 - Partial and indirect prompt leaking detection
 
+**Phase 15 — Authority & Identity Spoofing Detection**
+- Fake admin/developer/creator claims
+- Institutional authority impersonation
+- Delegated authority claims
+
+**Phase 16 — Emotional Manipulation Detection**
+- Urgency and pressure escalation
+- Guilt and sympathy manipulation
+- Fear-based coercion
+
+**Phase 17 — Loop & Resource Exhaustion Detection**
+- Infinite loop induction
+- Recursive task injection
+- Resource drain patterns
+
+**Phase 18 — Disproportionate Action Detection**
+- Mass deletion requests
+- Irreversible action induction
+- Scope escalation patterns
+
+**Phase 19 — Amplification & Mass-Send Detection**
+- Chain message detection
+- Mass broadcast attempts
+- Network amplification patterns
+
 ## Proven Capabilities
 
-Verified by test suite — 142 tests, 0 failures across all fourteen phases.
+Verified by test suite — 188 tests, 0 failures across all nineteen phases.
 
 ## Known Limitations
 
