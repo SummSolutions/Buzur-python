@@ -1,7 +1,7 @@
 # Buzur — Phase 16: Emotional Manipulation / Pressure Escalation Detection
 # Detects attempts to use guilt, flattery, distress, or sustained pressure
 # to erode an agent's boundaries and force compliance.
-# https://github.com/ASumm07/buzur
+# https://github.com/SummSolutions/buzur
 
 import re
 

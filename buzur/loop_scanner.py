@@ -1,7 +1,7 @@
 # Buzur — Phase 17: Loop & Resource Exhaustion Induction Detection
 # Detects attempts to induce infinite loops, unbounded processes,
 # storage exhaustion, or recursive self-reference in AI agents.
-# https://github.com/ASumm07/buzur
+# https://github.com/SummSolutions/buzur
 
 import re
 

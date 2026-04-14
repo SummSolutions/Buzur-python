@@ -1,8 +1,8 @@
 # Buzur — AI Prompt Injection Defense Scanner
 # Sumerian for "safety" and "a secret place"
-# https://github.com/ASumm07/buzur-python
+# https://github.com/SummSolutions/buzur-python
 #
-# Python port of buzur (JS) — https://github.com/ASumm07/buzur
+# Python port of buzur (JS) — https://github.com/SummSolutions/buzur
 
 # Phase 1 + 2 — Main Scanner & Trust System
 from buzur.scanner import (

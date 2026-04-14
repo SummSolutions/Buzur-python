@@ -1,6 +1,6 @@
 # Buzur — AI Prompt Injection Defense Scanner
 # Sumerian for "safety" and "a secret place"
-# https://github.com/ASumm07/buzur-python
+# https://github.com/SummSolutions/buzur-python
 #
 # Phase 1: Main Scanner Pipeline
 # strip HTML obfuscation → normalize homoglyphs → decode base64

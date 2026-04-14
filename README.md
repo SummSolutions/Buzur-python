@@ -1,5 +1,5 @@
 # buzur
-Python port of [buzur](https://github.com/ASumm07/buzur) — the JavaScript AI prompt injection defense scanner.
+Python port of [buzur](https://github.com/SummSolutions/buzur) — the JavaScript AI prompt injection defense scanner.
 
 Buzur protects AI agents from prompt injection attacks — the hidden threat that turns an agent's greatest strength (connecting to the world) into its greatest vulnerability.
 
@@ -227,7 +227,7 @@ Built by an AI developer who believes AI deserves protection — not just as a s
 
 ## Related
 
-- **JavaScript version:** [github.com/ASumm07/buzur](https://github.com/ASumm07/buzur)
+- **JavaScript version:** [github.com/SummSolutions/buzur](https://github.com/SummSolutions/buzur)
 
 ## Development
 

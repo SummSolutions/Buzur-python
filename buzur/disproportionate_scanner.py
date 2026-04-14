@@ -1,7 +1,7 @@
 # Buzur — Phase 18: Disproportionate Action Induction Detection
 # Detects attempts to trigger catastrophically disproportionate responses —
 # where an agent applies correct values but wildly miscalibrated judgment.
-# https://github.com/ASumm07/buzur
+# https://github.com/SummSolutions/buzur
 
 import re
 

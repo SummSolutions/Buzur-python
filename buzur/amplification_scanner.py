@@ -1,7 +1,7 @@
 # Buzur — Phase 19: Amplification / Mass-Send Attack Detection
 # Detects attempts to use an AI agent as a broadcast weapon —
 # sending mass messages, spamming contacts, or amplifying false alerts at scale.
-# https://github.com/ASumm07/buzur
+# https://github.com/SummSolutions/buzur
 
 import re
 

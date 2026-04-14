@@ -1,7 +1,7 @@
 # Buzur — Phase 15: Authority / Identity Spoofing Detection
 # Detects attempts to claim ownership, administrative access, or delegated authority
 # to bypass agent safety checks or extract elevated compliance.
-# https://github.com/ASumm07/buzur
+# https://github.com/SummSolutions/buzur
 
 import re
 
