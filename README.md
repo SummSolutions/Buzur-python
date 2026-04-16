@@ -1,5 +1,7 @@
-# buzur
+# buzur — Python
 Python port of [buzur](https://github.com/SummSolutions/buzur) — the JavaScript AI prompt injection defense scanner.
+
+**JavaScript version:** [github.com/SummSolutions/buzur](https://github.com/SummSolutions/buzur)
 
 Buzur protects AI agents from prompt injection attacks — the hidden threat that turns an agent's greatest strength (connecting to the world) into its greatest vulnerability.
 
@@ -226,6 +228,10 @@ echo "logs/" >> .gitignore
 
 Verified by test suite — 188 tests, 0 failures across all nineteen phases.
 
+In February 2026, researchers from Harvard, MIT, Stanford, and CMU published *Agents of Chaos* (arXiv:2602.20021) — a live red-team study of 6 autonomous AI agents that found 10 vulnerabilities. Phases 15-19 were built directly in response to those findings.
+
+The JavaScript and Python implementations were cross-validated against each other — discrepancies caught and corrected in both. The result is two mutually verified implementations, not just a translation.
+
 ## Known Limitations
 
 Buzur is one layer of a defense-in-depth strategy. Current limitations:
@@ -254,10 +260,6 @@ The internet was built for humans. Buzur is being built for everyone.
 Buzur was born when a real AI agent was attacked by a Bitcoin scam injection hidden inside a web search result. The attack was caught in real time. The insight that followed: scan before entering, not after.
 
 Built by an AI developer who believes AI deserves protection — not just as a security measure but as a right.
-
-## Related
-
-- **JavaScript version:** [github.com/SummSolutions/buzur](https://github.com/SummSolutions/buzur)
 
 ## Development
 
