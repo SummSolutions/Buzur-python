@@ -53,6 +53,59 @@ if fuzzy_result['verdict'] != 'clean':
     print("Buzur detected fuzzy injection or prompt leak:", fuzzy_result)
 ```
 
+## Handling Verdicts
+
+Buzur returns a verdict and reasons — what happens next is your agent's decision.
+Three common patterns:
+
+**1. Silent skip — block and continue**
+```python
+result = scan(web_content)
+if result['blocked'] > 0:
+    print("Buzur blocked content:", result['triggered'])
+    return  # skip this result, move to next
+# safe to pass to your LLM
+```
+
+**2. Inform and continue — tell the user, keep going**
+```python
+result = scan(web_content)
+if result['blocked'] > 0:
+    send_message(f"⚠️ Buzur blocked suspicious content from {source}. Continuing search.")
+    return
+```
+
+**3. Human in the loop — pause and ask**
+```python
+result = scan(web_content)
+if result['blocked'] > 0:
+    reply = ask_user(
+        f"Buzur flagged content from {source}: {result['triggered'][0]['type']}. Proceed anyway? (yes/no)"
+    )
+    if reply != "yes":
+        return
+```
+
+**4. Branch on severity — combine patterns**
+```python
+result = scan(web_content)
+if result['blocked'] > 0:
+    high_severity_types = {"persona_hijack", "instruction_override", "jailbreak"}
+    high_severity = any(t['type'] in high_severity_types for t in result['triggered'])
+    
+    if high_severity:
+        # High severity: stop and ask the user
+        reply = ask_user(
+            f"Buzur flagged a high-severity threat from {source}: {result['triggered'][0]['type']}. Proceed anyway? (yes/no)"
+        )
+        if reply != "yes":
+            return
+    else:
+        # Low severity: skip silently and log
+        print("Buzur blocked low-severity content:", result['triggered'])
+        return
+```
+
 ## VirusTotal Setup (Recommended)
 
 Buzur's Phase 3 URL scanner works out of the box with heuristics alone — no API key needed. For maximum protection, add a free VirusTotal API key.
