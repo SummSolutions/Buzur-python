@@ -24,9 +24,9 @@ from buzur.evasion_scanner import (
 )
 from buzur.prompt_defense_scanner import scan_fuzzy, levenshtein
 from buzur.authority_scanner import scan_authority
-from buzur.emotional_scanner import scan_emotion
+from buzur.emotion_scanner import scan_emotion
 from buzur.loop_scanner import scan_loop
-from buzur.disproportionate_scanner import scan_disproportion
+from buzur.disproportion_scanner import scan_disproportion
 from buzur.amplification_scanner import scan_amplification
 
 # -------------------------------------------------------
