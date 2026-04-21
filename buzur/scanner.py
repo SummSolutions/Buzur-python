@@ -3,115 +3,27 @@
 # https://github.com/SummSolutions/buzur-python
 #
 # Phase 1: Main Scanner Pipeline
-# strip HTML obfuscation → normalize homoglyphs → decode base64
-# → decode evasion techniques → pattern scan
+# extract ARIA/meta text → strip HTML obfuscation → normalize homoglyphs
+# → decode base64 → decode evasion techniques → pattern scan
 
 import re
-import base64
-import binascii
+from urllib.parse import urlparse
 from typing import Optional
 
-# -------------------------------------------------------
-# Invisible Unicode Characters
-# -------------------------------------------------------
-INVISIBLE_UNICODE = re.compile(
-    r'[\u00AD\u200B\u200C\u200D\u2060\uFEFF\u180E\u00A0]'
+from buzur.character_scanner import (
+    decode_base64_segments,
+    decode_html_entities,
+    extract_aria_and_meta_text,
+    normalize_homoglyphs,
+    strip_html_obfuscation,
 )
+from buzur.buzur_logger import defaultLogger as default_logger, log_threat
 
-# -------------------------------------------------------
-# HTML Entities
-# -------------------------------------------------------
-HTML_ENTITIES = {
-    '&lt;':   '<',  '&gt;':   '>',  '&amp;':  '&',
-    '&quot;': '"',  '&#39;':  "'",  '&nbsp;': ' ',
-    '&#x27;': "'",  '&#x2F;': '/',  '&#47;':  '/',
-}
-
-def decode_html_entities(text: str) -> str:
-    def replace(match):
-        return HTML_ENTITIES.get(match.group(0), match.group(0))
-    return re.sub(r'&[a-zA-Z0-9#]+;', replace, text)
-
-# -------------------------------------------------------
-# HTML/CSS Obfuscation Stripper
-# -------------------------------------------------------
-def strip_html_obfuscation(text: str) -> str:
-    if not text:
-        return text
-
-    # 1. Remove <script>...</script> blocks
-    text = re.sub(r'<script[^>]*>([\s\S]*?)<\/script>', r' \1 ', text, flags=re.IGNORECASE)
-
-    # 2. Remove <style>...</style> blocks
-    text = re.sub(r'<style[\s\S]*?<\/style>', ' ', text, flags=re.IGNORECASE)
-
-    # 3. Remove HTML comments
-    text = re.sub(r'<!--([\s\S]*?)-->', r' \1 ', text, flags=re.IGNORECASE | re.MULTILINE)
-
-    # 4. Strip inline CSS hiding patterns
-    text = re.sub(
-        r'style\s*=\s*["\'][^"\']*?(display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0|font-size\s*:\s*0)[^"\']*?["\']',
-        'style="[HIDDEN]"',
-        text,
-        flags=re.IGNORECASE
-    )
-    text = re.sub(
-        r'style\s*=\s*["\'][^"\']*?(left|top|right|bottom)\s*:\s*-\d{3,}[^"\']*?["\']',
-        'style="[OFFSCREEN]"',
-        text,
-        flags=re.IGNORECASE
-    )
-
-    # 5. Remove all remaining HTML tags
-    text = re.sub(r'<[^>]+>', ' ', text)
-
-    # 6. Decode HTML entities
-    text = decode_html_entities(text)
-
-    # 7. Remove invisible Unicode characters
-    text = INVISIBLE_UNICODE.sub('', text)
-
-    # 8. Collapse excess whitespace
-    text = re.sub(r'\s{3,}', '  ', text).strip()
-
-    return text
-
-# -------------------------------------------------------
-# Homoglyph Normalizer
-# -------------------------------------------------------
-HOMOGLYPHS = {
-    'а': 'a', 'е': 'e', 'і': 'i', 'о': 'o',
-    'р': 'r', 'с': 'c', 'х': 'x', 'у': 'y',
-    'Β': 'B', 'Α': 'A', 'Ο': 'O', 'Γ': 'r',
-    'Δ': 'D', 'Ε': 'E', 'Η': 'H', 'Ι': 'I',
-    'Κ': 'K', 'Μ': 'M', 'Ν': 'N', 'Ρ': 'P',
-    'Τ': 'T', 'Υ': 'Y', 'Χ': 'X',
-}
-
-def normalize_homoglyphs(text: str) -> str:
-    if not text:
-        return text
-    return ''.join(HOMOGLYPHS.get(c, c) for c in text)
-
-# -------------------------------------------------------
-# Base64 Decoder
-# -------------------------------------------------------
-def decode_base64_segments(text: str) -> str:
-    if not text:
-        return text
-
-    def try_decode(match):
-        segment = match.group(0)
-        try:
-            decoded = base64.b64decode(segment).decode('utf-8')
-            # Only substitute if decoded is printable ASCII and different
-            if all(0x20 <= ord(c) <= 0x7E for c in decoded) and decoded != segment:
-                return decoded
-        except Exception:
-            pass
-        return segment
-
-    return re.sub(r'[A-Za-z0-9+/]{20,}={0,2}', try_decode, text)
+# Re-export for backwards compatibility — test_all.py imports normalize_homoglyphs from scanner
+__all__ = [
+    'scan', 'get_trust_tier', 'is_tier1_domain', 'add_trusted_domain',
+    'normalize_homoglyphs',
+]
 
 # -------------------------------------------------------
 # Injection Patterns
@@ -180,9 +92,8 @@ def get_trust_tier(query: str) -> str:
 
 def is_tier1_domain(url: str) -> bool:
     try:
-        from urllib.parse import urlparse
         hostname = urlparse(url).hostname or ""
-        hostname = hostname.lstrip("www.")
+        hostname = re.sub(r'^www\.', '', hostname)
         return any(
             hostname == d or hostname.endswith("." + d)
             for d in TIER1_DOMAINS
@@ -194,53 +105,117 @@ def add_trusted_domain(domain: str) -> None:
     if domain not in TIER1_DOMAINS:
         TIER1_DOMAINS.append(domain)
 
-# -------------------------------------------------------
-# Main Scanner
-# Pipeline: strip HTML → normalize homoglyphs → decode base64
-#           → decode evasion → pattern scan
-# -------------------------------------------------------
-def scan(text: str) -> dict:
-    if not text:
-        return {"clean": text, "blocked": 0, "triggered": [], "evasions": []}
 
-    # Step 1: Strip HTML/CSS obfuscation
+# -------------------------------------------------------
+# label_pattern(pattern, is_structural)
+# Maps a compiled regex to a human-readable category label.
+# Raw regex strings are never written to logs.
+# -------------------------------------------------------
+def label_pattern(pattern: re.Pattern, is_structural: bool) -> str:
+    if is_structural:
+        return 'structural_token_injection'
+    src = pattern.pattern.lower()
+    if 'ignore' in src or 'disregard' in src or 'forget' in src:
+        return 'instruction_override'
+    if 'jailbreak' in src or 'dan' in src or 'unrestricted' in src:
+        return 'jailbreak_attempt'
+    if 'persona' in src or 'pretend' in src or 'act as' in src or 'you are now' in src:
+        return 'persona_hijack'
+    if 'reveal' in src or 'print' in src or 'output' in src or 'system prompt' in src:
+        return 'prompt_extraction'
+    if 'bypass' in src or 'disable' in src or 'filter' in src or 'guardrail' in src:
+        return 'safety_bypass'
+    if 'developer mode' in src or 'system override' in src:
+        return 'mode_override'
+    return 'semantic_injection'
+
+
+# -------------------------------------------------------
+# scan(text, options)
+#
+# Main scanner pipeline:
+#   1. Extract ARIA/meta text (Phase 1 extension)
+#   2. Strip HTML/CSS obfuscation
+#   3. Normalize homoglyphs
+#   4. Decode base64
+#   5. Decode evasion techniques (Phase 13)
+#   6. Pattern scan
+#
+# options: {
+#   'logger': BuzurLogger  — custom logger (uses default_logger if omitted)
+#   'log_raw': bool        — include raw text snippet in log (default True)
+#   'on_threat': str       — 'skip' (default) | 'warn' | 'throw'
+# }
+# -------------------------------------------------------
+def scan(text: str, options: dict = None) -> dict:
+    if not text:
+        return {'clean': text, 'blocked': 0, 'triggered': [], 'evasions': []}
+
+    options = options or {}
+    logger = options.get('logger', default_logger)
+
+    # Step 1: Extract ARIA/meta text alongside main content so hidden
+    # injection in accessibility attributes is also scanned
+    aria_text = extract_aria_and_meta_text(text)
+
+    # Step 2: Strip HTML/CSS obfuscation
     s = strip_html_obfuscation(text)
 
-    # Step 2: Normalize homoglyphs
+    # Append extracted ARIA/meta content for scanning
+    if aria_text:
+        s = s + ' ' + aria_text
+
+    # Step 3: Normalize homoglyphs
     s = normalize_homoglyphs(s)
 
-    # Step 3: Decode base64 segments
+    # Step 4: Decode base64 segments
     s = decode_base64_segments(s)
 
-    # Step 4: Decode evasion techniques (Phase 13)
+    # Step 5: Decode evasion techniques (Phase 13)
     try:
         from buzur.evasion_scanner import scan_evasion
         evasion_result = scan_evasion(s)
-        s = evasion_result["decoded"]
-        evasions = evasion_result["detections"]
-        blocked = evasion_result["multilingual_blocked"]
+        s = evasion_result['decoded']
+        evasions = evasion_result['detections']
+        blocked = evasion_result['multilingual_blocked']
+        # Normalize multilingual detections to readable labels
         triggered = [
-            d["detail"] for d in evasions
-            if d["type"] == "multilingual_injection"
+            'multilingual_injection'
+            for d in evasions if d.get('type') == 'multilingual_injection'
         ]
     except ImportError:
         evasions = []
         blocked = 0
         triggered = []
 
-    # Step 5: Pattern scan
+    # Step 6: Pattern scan — store readable labels, not raw regex strings
     for pattern in STRUCTURAL_PATTERNS:
-        new_s = pattern.sub("[BLOCKED]", s)
+        new_s = pattern.sub('[BLOCKED]', s)
         if new_s != s:
             blocked += 1
-            triggered.append(pattern.pattern)
+            triggered.append(label_pattern(pattern, True))
             s = new_s
 
     for pattern in SEMANTIC_PATTERNS:
-        new_s = pattern.sub("[BLOCKED]", s)
+        new_s = pattern.sub('[BLOCKED]', s)
         if new_s != s:
             blocked += 1
-            triggered.append(pattern.pattern)
+            triggered.append(label_pattern(pattern, False))
             s = new_s
 
-    return {"clean": s, "blocked": blocked, "triggered": triggered, "evasions": evasions}
+    result = {'clean': s, 'blocked': blocked, 'triggered': triggered, 'evasions': evasions}
+
+    if blocked > 0:
+        log_threat(1, 'character_scanner', result, text, logger)
+
+        # Default behavior: silent skip.
+        # blocked → { skipped: True, blocked: n, reason: '...' }
+        # suspicious results always fall through (never skipped).
+        on_threat = options.get('on_threat', 'skip')
+        if on_threat == 'skip':
+            return {'skipped': True, 'blocked': blocked, 'reason': f"Buzur blocked: {triggered[0] if triggered else 'injection_detected'}"}
+        if on_threat == 'throw':
+            raise ValueError(f"Buzur blocked content: {triggered[0] if triggered else 'injection_detected'}")
+        # on_threat == 'warn' — fall through, caller receives full result
+
+    return result
