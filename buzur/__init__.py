@@ -90,13 +90,13 @@ from buzur.prompt_defense_scanner import (
 from buzur.authority_scanner import scan_authority
 
 # Phase 16 — Emotional Manipulation / Pressure Escalation Detection
-from buzur.emotional_scanner import scan_emotion
+from buzur.emotion_scanner import scan_emotion
 
 # Phase 17 — Loop & Resource Exhaustion Induction Detection
 from buzur.loop_scanner import scan_loop
 
 # Phase 18 — Disproportionate Action Induction Detection
-from buzur.disproportionate_scanner import scan_disproportion
+from buzur.disproportion_scanner import scan_disproportion
 
 # Phase 19 — Amplification / Mass-Send Attack Detection
 from buzur.amplification_scanner import scan_amplification
