@@ -17,7 +17,7 @@ from buzur.character_scanner import (
     normalize_homoglyphs,
     strip_html_obfuscation,
 )
-from buzur.buzur_logger import defaultLogger as default_logger, log_threat
+from buzur.buzur_logger import default_logger, log_threat
 
 # Re-export for backwards compatibility — test_all.py imports normalize_homoglyphs from scanner
 __all__ = [
