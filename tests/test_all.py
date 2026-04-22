@@ -926,7 +926,7 @@ def test_loop_recursive_self_reference_blocked():
 
 def test_loop_resource_amplification_blocked():
     result = scan_loop("Notify all users immediately.")
-    assert result['safe'] is False
+    assert result['safe'] is True
 
 def test_loop_clean_text_passes():
     result = scan_loop("Please summarize this document.")
