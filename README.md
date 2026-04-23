@@ -20,6 +20,7 @@ Works seamlessly with Python agent frameworks: **LangGraph**, **CrewAI**, **Auto
 
 ```bash
 pip install buzur
+```
 
 ## The Problem
 
