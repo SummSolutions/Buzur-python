@@ -8,7 +8,7 @@
 
 Buzur is an open-source **24-phase scanner** that protects AI agents and LLM applications from **indirect prompt injection attacks** (OWASP LLM Top 10 #1).
 
-It inspects incoming content — web results, URLs, images (EXIF/QR/vision), tool outputs, RAG/memory data, JSON APIs, adversarial suffixes, evasion tricks, emotional manipulation, behavioral anomalies, supply-chain risks, **persistent memory poisoning**, **inter-agent propagation**, **tool shadowing**, and **conditional/time-delayed injections** — **before** any data reaches your model.
+It inspects incoming content — web results, URLs, images (EXIF/QR/vision), tool outputs, RAG/memory data, MCP schemas, JSON APIs, adversarial suffixes, supply-chain artifacts, inter-agent messages, and more — **before** any data reaches your model. **Default behavior:** Silent Skip (`blocked`) threats while keeping your agent responsive. Comprehensive threat logging included.
 
 Works seamlessly with Python agent frameworks: **LangGraph**, **CrewAI**, **AutoGen**, **LlamaIndex**, **Haystack**, and more.
 
@@ -24,11 +24,15 @@ pip install buzur
 
 ## The Problem
 
-AI agents that search the web are exposed to malicious content designed to hijack their behavior. A single poisoned search result can override an agent's instructions, change its persona, or exfiltrate data. This is called **indirect prompt injection** — ranked #1 on the OWASP Top 10 for LLM Applications.
+AI agents that pull in external data — web search results, tool outputs, RAG documents, user messages, or API responses — are highly vulnerable to **indirect prompt injection**.
+
+A single poisoned piece of content can hijack the agent's behavior, override its instructions, steal data, or turn it against its user. Traditional safeguards (system prompts, output filtering) come too late.
+
+This attack vector is ranked **#1 on the OWASP Top 10 for LLM Applications** and is growing rapidly with the rise of autonomous agents.
 
 ## Buzur's Approach
 
-Scan before you enter. Not patch after the fact.
+Scan before you enter. Buzur acts as a preemptive gatekeeper. It analyzes incoming content from any untrusted source and blocks dangerous payloads while allowing safe execution to continue.
 
 ```
 
