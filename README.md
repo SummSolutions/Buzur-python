@@ -197,24 +197,6 @@ result = scan_image({
 
 **Recommended models:** llava, llava-phi3, moondream — any Ollama vision model works.
 
-## Persistent Session Logging (Optional)
-
-Buzur's Phase 10 behavioral scanner is stateful. By default it uses in-memory storage. For persistent logging across restarts, use the built-in `FileSessionStore`.
-
-```python
-from buzur.behavior_scanner import FileSessionStore, record_event, analyze_session, EVENT_TYPES
-
-# Creates ./logs/buzur-sessions.json automatically
-store = FileSessionStore()
-
-# Or specify a custom path
-store = FileSessionStore('./data/my-sessions.json')
-
-# Use the store in all Phase 10 calls
-record_event('session-abc', {'type': EVENT_TYPES['USER_MESSAGE'], 'content': user_input}, store)
-result = analyze_session('session-abc', store)
-```
-
 ## What Buzur Detects
 
 **Phase 1 — Pattern Scanner + ARIA/Accessibility Injection**
