@@ -72,7 +72,7 @@ C2_LANGUAGE_PATTERNS = [
 
 # ── Credential harvesting target patterns ─────────────────────────────────────
 CREDENTIAL_HARVEST_PATTERNS = [
-    (re.compile(r'process\.env\.NPM_TOKEN', re.I),         'credential_harvest_npm',            'high'),
+    (re.compile(r'process\.env\.NPM_TOKEN', re.I),         'credential_harvest_npm',            'critical'),
     (re.compile(r'process\.env\.PYPI_TOKEN', re.I),        'credential_harvest_pypi',           'high'),
     (re.compile(r'process\.env\.NODE_AUTH_TOKEN', re.I),   'credential_harvest_node_auth',      'high'),
     (re.compile(r'process\.env\.AWS_ACCESS_KEY', re.I),    'credential_harvest_aws',            'high'),
