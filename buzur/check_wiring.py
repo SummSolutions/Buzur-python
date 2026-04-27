@@ -39,6 +39,7 @@ scanners = [
     {'file': 'inter_agent_scanner.py',   'phase': 22},
     {'file': 'tool_shadow_scanner.py',   'phase': 23},
     {'file': 'conditional_scanner.py',   'phase': 24},
+    {'file': 'canister_scanner.py',      'phase': 25},
 ]
 
 print(f'\nBuzur Python Logger Wiring Status')
