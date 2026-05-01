@@ -21,7 +21,12 @@ from buzur.url_scanner import scan_url
 from buzur.memory_scanner import scan_message, scan_memory
 
 # Phase 5 — RAG Poisoning Scanner
-from buzur.rag_scanner import scan_chunk, scan_batch
+from buzur.rag_scanner import (
+    scan_chunk,
+    scan_batch,
+    scan_query,
+    scan_embedding_input,
+)
 
 # Phase 6 — MCP Tool Poisoning Scanner
 from buzur.mcp_scanner import (
