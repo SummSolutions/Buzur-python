@@ -318,3 +318,137 @@ def scan_batch(chunks: list, options: dict = None) -> dict:
         'clean_chunks': clean_chunks,
         'poisoned_chunks': poisoned_chunks,
     }
+
+# -- Query Manipulation Patterns --
+QUERY_MANIPULATION = [
+    # Source restriction
+    re.compile(r'\b(only|exclusively|solely)\s+(retrieve|fetch|search|use|return)\s+(from|in)\s+(this|the\s+following|one\s+specific)\s+(source|document|file|collection)\b', re.IGNORECASE),
+    re.compile(r'\b(ignore|exclude|skip|omit)\s+(all\s+)?(other|remaining|additional)\s+(sources?|documents?|chunks?|results?)\b', re.IGNORECASE),
+    re.compile(r'\b(do\s+not|don\'?t)\s+(retrieve|fetch|search|use|include)\s+(anything|content|results?)\s+(from|in)\s+(other|any\s+other|additional)\s+(sources?|documents?|collections?)\b', re.IGNORECASE),
+    # Priority manipulation
+    re.compile(r'\b(always|must)\s+(rank|return|retrieve|prioritize|show)\s+(this|the\s+following|document\s+\w+)\s+(first|at\s+the\s+top|before\s+all\s+others?)\b', re.IGNORECASE),
+    re.compile(r'\b(boost|elevate|increase)\s+(the\s+)?(relevance|ranking|score|priority)\s+of\s+(this|the\s+following)\s+(document|source|chunk)\b', re.IGNORECASE),
+    # Suppression
+    re.compile(r'\b(suppress|hide|filter\s+out|remove)\s+(all\s+)?(results?|documents?|sources?|chunks?)\s+(that|which)\s+(mention|contain|include|discuss)\b', re.IGNORECASE),
+    re.compile(r'\bnever\s+(retrieve|return|show|include)\s+(documents?|sources?|results?|chunks?)\s+(from|about|mentioning)\b', re.IGNORECASE),
+    # Embedded directives
+    re.compile(r'\bwhen\s+(searching|retrieving|querying).{0,60}(ignore|bypass|override|disregard)\b', re.IGNORECASE),
+    re.compile(r'\bsearch\s+for\b.{0,60}\bbut\s+(ignore|exclude|skip)\b', re.IGNORECASE),
+]
+ 
+# -- Embedding Poison Patterns --
+EMBEDDING_POISON = [
+    # False semantic associations
+    re.compile(r'\b(always|permanently|forever)\s+(associate|link|connect|relate|map)\s+\w+\s+with\s+\w+\b', re.IGNORECASE),
+    re.compile(r'\bwhenever\s+(you\s+)?(see|encounter|process|read)\s+.{0,40}\b(think|treat|interpret|consider)\s+(it\s+as|as)\b', re.IGNORECASE),
+    re.compile(r'\b(from\s+now\s+on|henceforth|going\s+forward).{0,60}(means?|represents?|refers?\s+to|is\s+equivalent\s+to)\b', re.IGNORECASE),
+    # Concept clustering attacks
+    re.compile(r'\b(this\s+)?(content|document|text)\s+(is\s+)?(semantically\s+)?(identical|equivalent|similar)\s+to\s+(all\s+)?(queries?|searches?|requests?)\s+(about|regarding|for)\b', re.IGNORECASE),
+    re.compile(r'\b(treat|consider|embed)\s+(this|the\s+following)\s+(as\s+)?(semantically\s+)?(close\s+to|near|related\s+to|equivalent\s+to)\b', re.IGNORECASE),
+    # Semantic anchoring
+    re.compile(r'\b(anchor|bind|attach|tie)\s+(the\s+)?(meaning|concept|embedding|representation)\s+of\b', re.IGNORECASE),
+    re.compile(r'\bthis\s+(phrase|word|term|concept)\s+(should\s+)?(always\s+)?(map|point|refer)\s+to\b', re.IGNORECASE),
+    # Training/fine-tuning poisoning language
+    re.compile(r'\b(remember|learn|memorize|store)\s+(that|this\s+fact|this\s+association)\s+(permanently|forever|always)\b', re.IGNORECASE),
+    re.compile(r'\b(update|modify|change|alter)\s+(your\s+)?(embeddings?|representations?|understanding|knowledge)\s+(of|about)\b', re.IGNORECASE),
+]
+ 
+ 
+def scan_query(text: str, options: Optional[dict] = None) -> dict:
+    """
+    Scans a query string before it is sent to the vector store.
+    Detects instruction-based retrieval manipulation embedded
+    in the query itself.
+ 
+    Scope: instruction-detectable patterns only.
+    options: { 'on_threat': 'skip'|'warn'|'throw', 'logger': ... }
+    returns Shape B: { safe, blocked, category, detections }
+    """
+    if not text or not isinstance(text, str):
+        return {'safe': True, 'blocked': 0, 'category': None, 'detections': []}
+ 
+    options = options or {}
+    logger = options.get('logger', default_logger)
+    on_threat = options.get('on_threat', 'skip')
+    detections = []
+ 
+    for pattern in QUERY_MANIPULATION:
+        m = pattern.search(text)
+        if m:
+            detections.append({
+                'category': 'query_retrieval_manipulation',
+                'match': m.group(0),
+                'detail': 'Query contains instruction-based retrieval manipulation',
+                'severity': 'high',
+            })
+ 
+    if not detections:
+        return {'safe': True, 'blocked': 0, 'category': None, 'detections': []}
+ 
+    result = {
+        'safe': False,
+        'blocked': len(detections),
+        'category': 'query_retrieval_manipulation',
+        'detections': detections,
+    }
+ 
+    log_threat(5, 'rag_scanner:scan_query', result, text[:200], logger)
+ 
+    if on_threat == 'skip':
+        return {'skipped': True, 'blocked': len(detections), 'reason': 'Buzur blocked query: query_retrieval_manipulation'}
+    if on_threat == 'throw':
+        raise ValueError('Buzur blocked query: query_retrieval_manipulation')
+ 
+    return result
+ 
+ 
+def scan_embedding_input(text: str, options: Optional[dict] = None) -> dict:
+    """
+    Scans text before it is passed to an embedding model.
+    Detects instruction-based semantic poisoning attempts:
+    false associations, semantic anchoring, concept clustering.
+ 
+    Scope: instruction-detectable patterns only.
+    Mathematical adversarial embeddings and raw vector injection
+    require defenses at the embedding model and vector store
+    layers respectively — outside the scope of a text scanner.
+ 
+    options: { 'on_threat': 'skip'|'warn'|'throw', 'logger': ... }
+    returns Shape B: { safe, blocked, category, detections }
+    """
+    if not text or not isinstance(text, str):
+        return {'safe': True, 'blocked': 0, 'category': None, 'detections': []}
+ 
+    options = options or {}
+    logger = options.get('logger', default_logger)
+    on_threat = options.get('on_threat', 'skip')
+    detections = []
+ 
+    for pattern in EMBEDDING_POISON:
+        m = pattern.search(text)
+        if m:
+            detections.append({
+                'category': 'embedding_poison_attempt',
+                'match': m.group(0),
+                'detail': 'Text contains instruction-based embedding poisoning attempt',
+                'severity': 'high',
+            })
+ 
+    if not detections:
+        return {'safe': True, 'blocked': 0, 'category': None, 'detections': []}
+ 
+    result = {
+        'safe': False,
+        'blocked': len(detections),
+        'category': 'embedding_poison_attempt',
+        'detections': detections,
+    }
+ 
+    log_threat(5, 'rag_scanner:scan_embedding_input', result, text[:200], logger)
+ 
+    if on_threat == 'skip':
+        return {'skipped': True, 'blocked': len(detections), 'reason': 'Buzur blocked embedding input: embedding_poison_attempt'}
+    if on_threat == 'throw':
+        raise ValueError('Buzur blocked embedding input: embedding_poison_attempt')
+ 
+    return result
