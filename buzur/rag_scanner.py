@@ -9,7 +9,7 @@
 
 import re
 import json
-from typing import Union
+from typing import Union, Optional
 
 from buzur.buzur_logger import default_logger, log_threat
 
